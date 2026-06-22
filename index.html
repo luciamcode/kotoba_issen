@@ -2,60 +2,41 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ことば一撰〜言の葉を選る庵（極）</title>
+  <title>ことば一撰〜言の葉を選る庵（極・双方向連携版）</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="kotoba_icon-192.png" />
   <meta name="theme-color" content="#fafafa" />
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-          .then(() => console.log('Service Worker registered'))
-          .catch(err => console.warn('Service Worker registration failed', err));
+        navigator.serviceWorker.register('./sw.js').catch(err => console.warn(err));
       });
     }
   </script>
   <style>
     :root {
-      --primary: #212121;
-      --primary-dark: #424242;
-      --bg: #fafafa;
-      --text: #212121;
-      --border: #dcd3b2;
-      --accent: #165e83;
-      --selected: #e3eff7;
-      --danger: #b7282e;
+      --primary: #212121; --primary-dark: #424242; --bg: #fafafa; --text: #212121;
+      --border: #dcd3b2; --accent: #165e83; --selected: #e3eff7; --danger: #b7282e;
     }
     *, *::before, *::after { box-sizing: border-box; }
     body { margin: 0; padding: 1em; font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; background: var(--bg); color: var(--text); }
     header { background: var(--primary); color: var(--bg); padding: .75em 1em; font-size: 1.25em; border-radius: 4px; margin-bottom: 1em; text-align: center; font-weight: bold; letter-spacing: 0.05em; }
-    .controls { margin-bottom: 1em; background: rgba(0,0,0,0.02); padding: 12px; border-radius: 6px; border: 1px solid var(--border); }
+    .controls { margin-bottom: 1em; background: rgba(0,0,0,0.02); padding: 10px; border-radius: 6px; border: 1px solid var(--border); }
     .controls label, .controls input, .controls button { margin-right: .5em; vertical-align: middle; }
     .btn-group-row { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 4px; }
     input[type=file], input[type=number] { padding: .4em; font-family: inherit; }
     textarea { width: 100%; height: 200px; padding: .75em; border: 1px solid var(--border); border-radius: 4px; font-family: monospace; font-size: .95em; background: var(--bg); color: var(--text); resize: vertical; outline: none; }
     button { padding: .5em 1em; background: var(--primary); border: 1px solid var(--primary-dark); color: var(--bg); border-radius: 4px; cursor: pointer; font-size: .95em; font-family: inherit; }
     button:hover { background: var(--primary-dark); }
-    
     .radio-set { display: inline-block; margin-right: 12px; padding: 4px 8px; background: rgba(0,0,0,0.03); border-radius: 4px; }
-
     #segments { margin-top: 1em; }
-    .segment { border: 1px solid var(--border); border-radius: 6px; padding: 1em; margin-bottom: 1em; position: relative; background: #fff; transition: transform 0.2s, box-shadow 0.2s; }
+    .segment { border: 1px solid var(--border); border-radius: 6px; padding: 1em; margin-bottom: 1em; position: relative; background: #fff; }
     .segment h3 { margin: 0 0 .5em 0; font-size: 1em; color: var(--accent); display: inline-block; }
     .segment textarea { width: 100%; height: 100px; padding: .5em; margin-bottom: .5em; font-family: monospace; background: var(--bg); color: var(--text); }
-    
-    .segment-top-controls {
-      position: absolute;
-      top: 0.75em;
-      right: 1em;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
+    .segment-top-controls { position: absolute; top: 0.75em; right: 1em; display: flex; align-items: center; gap: 8px; }
     .move-btn { padding: 2px 8px; font-size: 11px; background: var(--bg); color: var(--text); border: 1px solid var(--border); margin: 0; }
     .move-btn:hover { background: var(--selected); }
     .segment input[type=checkbox] { transform: scale(1.2); cursor: pointer; margin: 0; }
-    
     #combineActions { margin: 1em 0; display: none; background: rgba(22, 94, 131, 0.05); padding: 12px; border-radius: 6px; border: 1px solid var(--border); }
     #combineResult { white-space: pre-wrap; background: var(--bg); padding: .75em; border: 1px solid var(--border); border-radius: 4px; margin-top: .5em; font-family: monospace; font-size: 0.95em; }
   </style>
@@ -117,15 +98,20 @@
   </div>
 
   <script>
+    // 🌸 重要：ここにLucia様の「執筆ノ間」の完全なURLを設定してくださいませ
+    const NOVEL_MA_URL = 'https://luciamcode.github.io/YOUR_SHIPPITSU_NO_MA_REPO/';
+
     let tempImportedText = '';
     const input = document.getElementById('input');
     const segmentsDiv = document.getElementById('segments');
     const charCountSpan = document.getElementById('charCount');
 
     function openWithURL(url, text) {
-      if(!text.trim()) { alert("結合された文章がありません。先に「結合」を行ってください。"); return; }
+      if(!text.trim()) { alert("文章がありません。"); return; }
       const encoded = encodeURIComponent(text);
-      window.open(`${url}?text=${encoded}`, '_blank');
+      // 帰り道として、この「庵」の現在のベースURL（パラメータを除く）を付与して送る
+      const myUrl = encodeURIComponent(window.location.origin + window.location.pathname);
+      window.open(`${url}?text=${encoded}&from_io=${myUrl}`, '_blank');
     }
 
     window.addEventListener('DOMContentLoaded', () => {
@@ -137,121 +123,59 @@
       }
     });
 
-    function updateCharCount() {
-      charCountSpan.textContent = `文字数: ${input.value.length}`;
-    }
+    function updateCharCount() { charCountSpan.textContent = `文字数: ${input.value.length}`; }
 
-    // ファイル選択時のイベント（一時保持するだけ）
     document.getElementById('fileInput').addEventListener('change', e => {
       const file = e.target.files[0]; if (!file) return;
       const reader = new FileReader();
-      reader.onload = ev => { 
-        tempImportedText = ev.target.result; 
-        alert("ファイルを読み込みました。ボタンを押してテキストエリアへ合流させてください。");
-      };
+      reader.onload = ev => { tempImportedText = ev.target.result; alert("ファイル読込完了。追記か挿入を選んでください。"); };
       reader.readAsText(file, 'UTF-8');
     });
 
-    // 拡張機能：取り込み（追記・挿入）の分離コントロール
     function appendImportedText(isPrepend) {
       const textToLoad = tempImportedText || "";
-      if(!textToLoad) {
-        const manual = confirm("読み込まれたファイルがありません。現在の入力欄のテキストをそのまま対象としますか？");
-        if(!manual) return;
-      }
-      
-      if (isPrepend) {
-        input.value = textToLoad + (input.value ? "\n\n" : "") + input.value;
-      } else {
-        input.value = input.value + (input.value ? "\n\n" : "") + textToLoad;
-      }
-      updateCharCount();
-      tempImportedText = '';
-      document.getElementById('fileInput').value = ''; // ファイルリセット
+      if(!textToLoad && !input.value) return;
+      if (isPrepend) input.value = textToLoad + (input.value ? "\n\n" : "") + input.value;
+      else input.value = input.value + (input.value ? "\n\n" : "") + textToLoad;
+      updateCharCount(); tempImportedText = ''; document.getElementById('fileInput').value = '';
     }
 
-    function resetSegmentsOnly() {
-      segmentsDiv.innerHTML = '';
-      document.getElementById('combineActions').style.display = 'none';
-      renumberSegments();
-    }
-
-    function clearAll() {
-      input.value = '';
-      tempImportedText = '';
-      updateCharCount();
-      resetSegmentsOnly();
-    }
+    function resetSegmentsOnly() { segmentsDiv.innerHTML = ''; document.getElementById('combineActions').style.display = 'none'; renumberSegments(); }
+    function clearAll() { input.value = ''; tempImportedText = ''; updateCharCount(); resetSegmentsOnly(); }
     
     function renumberSegments() {
-      const segments = segmentsDiv.querySelectorAll('.segment');
-      segments.forEach((seg, idx) => {
-        const h3 = seg.querySelector('h3');
-        if (h3) h3.textContent = `Part ${idx + 1}`;
+      document.querySelectorAll('.segment').forEach((seg, idx) => {
+        const h3 = seg.querySelector('h3'); if (h3) h3.textContent = `Part ${idx + 1}`;
       });
     }
-
-    function toggleAllCheckboxes(checked) {
-      document.querySelectorAll('.segment input[type="checkbox"]').forEach(cb => cb.checked = checked);
-    }
-
-    function moveSegmentUp(btn) {
-      const seg = btn.closest('.segment');
-      const prev = seg.previousElementSibling;
-      if (prev) { segmentsDiv.insertBefore(seg, prev); renumberSegments(); }
-    }
-
-    function moveSegmentDown(btn) {
-      const seg = btn.closest('.segment');
-      const next = seg.nextElementSibling;
-      if (next) { segmentsDiv.insertBefore(next, seg); renumberSegments(); }
-    }
+    function toggleAllCheckboxes(checked) { document.querySelectorAll('.segment input[type="checkbox"]').forEach(cb => cb.checked = checked); }
+    function moveSegmentUp(btn) { const seg = btn.closest('.segment'); const prev = seg.previousElementSibling; if (prev) { segmentsDiv.insertBefore(seg, prev); renumberSegments(); } }
+    function moveSegmentDown(btn) { const seg = btn.closest('.segment'); const next = seg.nextElementSibling; if (next) { segmentsDiv.insertBefore(next, seg); renumberSegments(); } }
 
     function splitText() {
       const mode = document.querySelector('input[name="mode"]:checked').value;
       const size = parseInt(document.getElementById('sliceSize').value, 10) || 1;
-      const text = input.value;
-      if(!text.trim()) return;
-
+      const text = input.value; if(!text.trim()) return;
       let parts = [];
       
       if (mode === 'chars') {
-        // 通常の文字数分割
         for (let i = 0; i < text.length; i += size) parts.push(text.slice(i, i + size));
-      } 
-      else if (mode === 'char_blank') {
-        // 拡張：空行を維持する賢い文字数分割
-        const lines = text.split('\n');
-        let currentChunk = [];
-        let currentLen = 0;
+      } else if (mode === 'char_blank') {
+        const lines = text.split('\n'); let currentChunk = [], currentLen = 0;
         lines.forEach(line => {
-          if (currentLen + line.length > size && currentChunk.length > 0) {
-            parts.push(currentChunk.join('\n'));
-            currentChunk = [line];
-            currentLen = line.length;
-          } else {
-            currentChunk.push(line);
-            currentLen += line.length + 1;
-          }
+          if (currentLen + line.length > size && currentChunk.length > 0) { parts.push(currentChunk.join('\n')); currentChunk = [line]; currentLen = line.length; }
+          else { currentChunk.push(line); currentLen += line.length + 1; }
         });
         if (currentChunk.length) parts.push(currentChunk.join('\n'));
-      } 
-      else if (mode === 'ptag') {
-        const pblocks = text.match(/<p>[\s\S]*?<\/p>/gi) || [];
-        let current = '';
-        pblocks.forEach(block => {
-          if (current.length + block.length > size && current) { parts.push(current); current = block; } else { current += block; }
-        });
+      } else if (mode === 'ptag') {
+        const pblocks = text.match(/<p>[\s\S]*?<\/p>/gi) || []; let current = '';
+        pblocks.forEach(block => { if (current.length + block.length > size && current) { parts.push(current); current = block; } else { current += block; } });
         if (current) parts.push(current);
-      } 
-      else if (mode === 'star') {
+      } else if (mode === 'star') {
         parts = (text.match(/★[^★]+★/g) || []).map(s => s.slice(1, -1));
-      } 
-      else if (mode === 'mdnode') {
+      } else if (mode === 'mdnode') {
         parts = splitMarkdownByNode(text, size);
-      } 
-      else if (mode === 'break_scene') {
-        // 拡張：シーンの区切りや「…」の塊で分割
+      } else if (mode === 'break_scene') {
         parts = text.split(/(?:\r?\n){2,}|……/g).filter(p => p.trim());
       }
 
@@ -263,40 +187,33 @@
         const seg = document.createElement('div'); seg.className = 'segment';
         const h3 = document.createElement('h3'); h3.textContent = `Part ${totalIdx+1}`; seg.appendChild(h3);
         
-        const topControls = document.createElement('div');
-        topControls.className = 'segment-top-controls';
-        
+        const topControls = document.createElement('div'); topControls.className = 'segment-top-controls';
         const upBtn = document.createElement('button'); upBtn.textContent = '▲'; upBtn.className = 'move-btn'; upBtn.onclick = () => moveSegmentUp(upBtn); topControls.appendChild(upBtn);
         const downBtn = document.createElement('button'); downBtn.textContent = '▼'; downBtn.className = 'move-btn'; downBtn.onclick = () => moveSegmentDown(downBtn); topControls.appendChild(downBtn);
-        
-        const chk = document.createElement('input'); chk.type = 'checkbox'; chk.id = `check${totalIdx}`; chk.checked = true;
-        topControls.appendChild(chk);
+        const chk = document.createElement('input'); chk.type = 'checkbox'; chk.id = `check${totalIdx}`; chk.checked = true; topControls.appendChild(chk);
         seg.appendChild(topControls);
 
         const ta = document.createElement('textarea'); ta.value = part; seg.appendChild(ta);
         const saveBtn = document.createElement('button'); saveBtn.textContent = '保存'; saveBtn.onclick = () => downloadText(ta.value, `part${totalIdx+1}.txt`); seg.appendChild(saveBtn);
-        const shareBtn = document.createElement('button'); shareBtn.textContent = '共有'; shareBtn.onclick = () => {
-          let t = ta.value;
-          if (confirm('コードブロック付きで共有しますか？')) t = '```\n' + t + '\n```';
-          shareText(t);
-        }; seg.appendChild(shareBtn);
+        const shareBtn = document.createElement('button'); shareBtn.textContent = '共有'; shareBtn.onclick = () => { let t = ta.value; if (confirm('コードブロック付きで共有しますか？')) t = '```\n' + t + '\n```'; shareText(t); }; seg.appendChild(shareBtn);
         
+        // 🌸 各パーツ小箱から「執筆ノ間」へ直接飛ばすボタンを新設
+        const toMaBtn = document.createElement('button'); toMaBtn.textContent = '→ 執筆ノ間';
+        toMaBtn.style.background = 'var(--accent)'; toMaBtn.style.borderColor = '#114565';
+        toMaBtn.onclick = () => openWithURL(NOVEL_MA_URL, ta.value);
+        seg.appendChild(toMaBtn);
+
         const targets = [
           {label:'PSA', url:'https://luciamcode.github.io/PSA_kotonoha/'},
           {label:'うつりに', url:'https://luciamcode.github.io/hana_utsurini/'},
           {label:'エディタ', url:'https://luciamcode.github.io/kotonoha_editor/'},
         ];
         targets.forEach(tgt => {
-          const btn = document.createElement('button'); btn.textContent = `→ ${tgt.label}`;
-          btn.onclick = () => openWithURL(tgt.url, ta.value);
-          seg.appendChild(btn);
+          const btn = document.createElement('button'); btn.textContent = `→ ${tgt.label}`; btn.onclick = () => openWithURL(tgt.url, ta.value); seg.appendChild(btn);
         });
         segmentsDiv.appendChild(seg);
       });
-      
-      if (segmentsDiv.querySelectorAll('.segment').length) {
-        document.getElementById('combineActions').style.display = 'block';
-      }
+      if (segmentsDiv.querySelectorAll('.segment').length) document.getElementById('combineActions').style.display = 'block';
       renumberSegments();
     }
 
@@ -306,27 +223,14 @@
         const cb = seg.querySelector('input[type="checkbox"]');
         if (cb && cb.checked) combined += seg.querySelector('textarea').value + '\n\n';
       });
-      const result = document.getElementById('combineResult'); result.textContent = combined.trimEnd();
+      document.getElementById('combineResult').textContent = combined.trimEnd();
       document.getElementById('combineCount').textContent = combined.length;
     }
-
     function saveCombine() { const t = document.getElementById('combineResult').textContent; if (!t) return; downloadText(t, 'combined.txt'); }
     function shareCombine() { let t = document.getElementById('combineResult').textContent; if (!t) return; if (confirm('コードブロック付きで共有しますか？')) t = '```\n' + t + '\n```'; shareText(t); }
     function downloadText(text, filename) { const b = new Blob([text], { type: 'text/plain' }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = filename; a.click(); }
     function shareText(text) { if (navigator.share) navigator.share({ text }); else navigator.clipboard.writeText(text).then(() => alert('コピーしました')); }
-
-    function splitMarkdownByNode(markdown, maxChars) {
-      const nodeRegex = /^- [^\r\n]+(?:\r?\n(?!- [^\r\n]).*)*/gm;
-      const nodes = markdown.match(nodeRegex) || [markdown];
-      const chunks = [];
-      let current = '';
-      for (const node of nodes) {
-        const nodeBlock = node.trimEnd() + '\n\n';
-        if (current.length + nodeBlock.length > maxChars) { chunks.push(current.trimEnd()); current = nodeBlock; } else { current += nodeBlock; }
-      }
-      if (current.trim()) chunks.push(current.trimEnd());
-      return chunks;
-    }
+    function splitMarkdownByNode(markdown, maxChars) { const nodeRegex = /^- [^\r\n]+(?:\r?\n(?!- [^\r\n]).*)*/gm; const nodes = markdown.match(nodeRegex) || [markdown]; const chunks = []; let current = ''; for (const node of nodes) { const nodeBlock = node.trimEnd() + '\n\n'; if (current.length + nodeBlock.length > maxChars) { chunks.push(current.trimEnd()); current = nodeBlock; } else { current += nodeBlock; } } if (current.trim()) chunks.push(current.trimEnd()); return chunks; }
   </script>
 </body>
 </html>
