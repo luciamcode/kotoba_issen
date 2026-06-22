@@ -3,7 +3,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ことば一撰〜言の葉を選る庵</title>
-  <!-- PWA対応 -->
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="kotoba_icon-192.png" />
   <meta name="theme-color" content="#fafafa" />
@@ -22,31 +21,54 @@
       --primary-dark: #424242;
       --bg: #fafafa;
       --text: #212121;
-      --border: #e0e0e0;
+      --border: #dcd3b2;
+      --accent: #165e83;
+      --selected: #e3eff7;
     }
     *, *::before, *::after { box-sizing: border-box; }
-    body { margin: 0; padding: 1em; font-family: sans-serif; background: var(--bg); color: var(--text); }
-    header { background: var(--primary); color: var(--bg); padding: .75em 1em; font-size: 1.25em; border-radius: 4px; margin-bottom: 1em; text-align: center; }
-    .controls { margin-bottom: 1em; }
+    body { margin: 0; padding: 1em; font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; background: var(--bg); color: var(--text); }
+    header { background: var(--primary); color: var(--bg); padding: .75em 1em; font-size: 1.25em; border-radius: 4px; margin-bottom: 1em; text-align: center; font-weight: bold; letter-spacing: 0.05em; }
+    .controls { margin-bottom: 1em; background: rgba(0,0,0,0.02); padding: 10px; border-radius: 6px; border: 1px solid var(--border); }
     .controls label, .controls input, .controls button { margin-right: .5em; vertical-align: middle; }
-    input[type=file], input[type=number] { padding: .4em; }
-    textarea { width: 100%; height: 200px; padding: .75em; border: 1px solid var(--border); border-radius: 4px; font-family: monospace; font-size: .95em; background: var(--bg); color: var(--text); resize: vertical; }
-    button { padding: .5em 1em; background: var(--primary); border: 1px solid var(--primary-dark); color: var(--bg); border-radius: 4px; cursor: pointer; font-size: .95em; margin-top: .5em; margin-right: .5em; }
+    input[type=file], input[type=number] { padding: .4em; font-family: inherit; }
+    textarea { width: 100%; height: 200px; padding: .75em; border: 1px solid var(--border); border-radius: 4px; font-family: monospace; font-size: .95em; background: var(--bg); color: var(--text); resize: vertical; outline: none; }
+    button { padding: .5em 1em; background: var(--primary); border: 1px solid var(--primary-dark); color: var(--bg); border-radius: 4px; cursor: pointer; font-size: .95em; margin-top: .5em; margin-right: .5em; font-family: inherit; }
     button:hover { background: var(--primary-dark); }
+    
     #segments { margin-top: 1em; }
-    .segment { border: 1px solid var(--border); border-radius: 4px; padding: 1em; margin-bottom: 1em; position: relative; }
-    .segment h3 { margin: 0 0 .5em 0; font-size: 1em; color: var(--primary-dark); }
+    .segment { border: 1px solid var(--border); border-radius: 6px; padding: 1em; margin-bottom: 1em; position: relative; background: #fff; transition: transform 0.2s, box-shadow 0.2s; }
+    .segment h3 { margin: 0 0 .5em 0; font-size: 1em; color: var(--accent); display: inline-block; }
     .segment textarea { width: 100%; height: 100px; padding: .5em; margin-bottom: .5em; font-family: monospace; background: var(--bg); color: var(--text); }
-    .segment input[type=checkbox] { position: absolute; top: 1em; right: 1em; }
-    .segment .starExtractBtn { display: inline-block; }
-    #combineActions { margin: 1em 0; display: none; }
-    #combineResult { white-space: pre-wrap; background: var(--bg); padding: .75em; border: 1px solid var(--border); border-radius: 4px; margin-top: .5em; }
+    
+    /* 拡張：配置コントロールエリア */
+    .segment-top-controls {
+      position: absolute;
+      top: 0.75em;
+      right: 1em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .move-btn {
+      padding: 2px 8px;
+      font-size: 11px;
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      margin: 0;
+    }
+    .move-btn:hover { background: var(--selected); }
+    .segment input[type=checkbox] { transform: scale(1.2); cursor: pointer; margin: 0; }
+    
+    #combineActions { margin: 1em 0; display: none; background: rgba(22, 94, 131, 0.05); padding: 12px; border-radius: 6px; border: 1px solid var(--border); }
+    #combineResult { white-space: pre-wrap; background: var(--bg); padding: .75em; border: 1px solid var(--border); border-radius: 4px; margin-top: .5em; font-family: monospace; font-size: 0.95em; }
   </style>
 </head>
 <body>
-  <header>ことば一撰〜言の葉を選る庵</header>
+  <header>ことば一撰 〜 言の葉を選る庵</header>
   <div class="controls">
     <label>ファイル読み込む:<input type="file" id="fileInput" accept=".txt"></label>
+    <br style="margin-bottom: 6px; display: block;">
     <label>モード:</label>
     <label><input type="radio" name="mode" value="chars" checked>文字数</label>
     <label><input type="radio" name="mode" value="ptag">pタグ単位</label>
@@ -55,16 +77,21 @@
     <label>サイズ:<input type="number" id="sliceSize" value="10000" min="1"></label>
     <span id="charCount">文字数: 0</span>
   </div>
-  <textarea id="input" oninput="updateCharCount()" placeholder="テキストを入力..."></textarea>
-  <div class="controls">
-    <button onclick="splitText()">分割</button>
-    <button onclick="resetSegmentsOnly()">やり直し（分割だけ）</button>
-    <button onclick="clearAll()">クリア（全部）</button>
+  <textarea id="input" oninput="updateCharCount()" placeholder="ここに長文を入力、またはファイルを読み込んで「分割（追加蓄積）」を押してください..."></textarea>
+  <div class="controls" style="background:transparent; border:none; padding:0;">
+    <button onclick="splitText()" style="background:var(--accent); border-color:#114565;">分割（追加蓄積）</button>
+    <button onclick="toggleAllCheckboxes(true)">全選択</button>
+    <button onclick="toggleAllCheckboxes(false)">全解除</button>
+    <button onclick="resetSegmentsOnly()">やり直し（分割だけ消す）</button>
+    <button onclick="clearAll()">クリア（全部初期化）</button>
   </div>
+  
   <div id="segments"></div>
+  
   <div id="combineActions">
-    <button onclick="combineSelected()">結合</button>
-    <span>結合文字数:<span id="combineCount">0</span></span>
+    <strong style="color:var(--accent); font-size:14px; display:block; margin-bottom:8px;">◆ 選り抜かれた言の葉の統合</strong>
+    <button onclick="combineSelected()">結合（現在の順序で）</button>
+    <span>結合文字数:<span id="combineCount" style="font-weight:bold; color:var(--accent);">0</span> 文字</span>
     <button onclick="saveCombine()">保存結合</button>
     <button onclick="shareCombine()">共有結合</button>
     <div style="margin-top: 0.5em;">
@@ -103,14 +130,50 @@
     function resetSegmentsOnly() {
       segmentsDiv.innerHTML = '';
       document.getElementById('combineActions').style.display = 'none';
+      renumberSegments();
     }
     function clearAll() {
       input.value = '';
       updateCharCount();
       resetSegmentsOnly();
     }
+    
+    // 拡張機能：現在の並び順に基づいて Part 番号を再美装する
+    function renumberSegments() {
+      const segments = segmentsDiv.querySelectorAll('.segment');
+      segments.forEach((seg, idx) => {
+        const h3 = seg.querySelector('h3');
+        if (h3) h3.textContent = `Part ${idx + 1}`;
+      });
+    }
+
+    // 拡張機能：一括選択・解除
+    function toggleAllCheckboxes(checked) {
+      document.querySelectorAll('.segment input[type="checkbox"]').forEach(cb => cb.checked = checked);
+    }
+
+    // 拡張機能：ノードを上に移動
+    function moveSegmentUp(btn) {
+      const seg = btn.closest('.segment');
+      const prev = seg.previousElementSibling;
+      if (prev) {
+        segmentsDiv.insertBefore(seg, prev);
+        renumberSegments();
+      }
+    }
+
+    // 拡張機能：ノードを下に移動
+    function moveSegmentDown(btn) {
+      const seg = btn.closest('.segment');
+      const next = seg.nextElementSibling;
+      if (next) {
+        segmentsDiv.insertBefore(next, seg);
+        renumberSegments();
+      }
+    }
+
     function splitText() {
-      resetSegmentsOnly();
+      // 変更：resetSegmentsOnly() を呼ばず、既存のパーツの後ろへ蓄積する形に拡張
       const mode = document.querySelector('input[name="mode"]:checked').value;
       const size = parseInt(document.getElementById('sliceSize').value, 10) || 1;
       const text = input.value;
@@ -130,12 +193,28 @@
         parts = splitMarkdownByNode(text, size);
       }
       parts = parts.map(part => part.replace(/<\/p>/g, '</p>\n'));
+      
+      // 現在すでに何件のパーツがあるかを取得（通し番号用）
+      const existingCount = segmentsDiv.querySelectorAll('.segment').length;
+
       parts.forEach((part, i) => {
+        const totalIdx = existingCount + i;
         const seg = document.createElement('div'); seg.className = 'segment';
-        const h3 = document.createElement('h3'); h3.textContent = `Part ${i+1}`; seg.appendChild(h3);
-        const chk = document.createElement('input'); chk.type = 'checkbox'; chk.id = `check${i}`; seg.appendChild(chk);
+        const h3 = document.createElement('h3'); h3.textContent = `Part ${totalIdx+1}`; seg.appendChild(h3);
+        
+        // 拡張：並び替え用コントロールエリアの作成
+        const topControls = document.createElement('div');
+        topControls.className = 'segment-top-controls';
+        
+        const upBtn = document.createElement('button'); upBtn.textContent = '▲'; upBtn.className = 'move-btn'; upBtn.onclick = () => moveSegmentUp(upBtn); topControls.appendChild(upBtn);
+        const downBtn = document.createElement('button'); downBtn.textContent = '▼'; downBtn.className = 'move-btn'; downBtn.onclick = () => moveSegmentDown(downBtn); topControls.appendChild(downBtn);
+        
+        const chk = document.createElement('input'); chk.type = 'checkbox'; chk.id = `check${totalIdx}`; chk.checked = true; // 初期状態は自動で選択
+        topControls.appendChild(chk);
+        seg.appendChild(topControls);
+
         const ta = document.createElement('textarea'); ta.value = part; seg.appendChild(ta);
-        const saveBtn = document.createElement('button'); saveBtn.textContent = '保存'; saveBtn.onclick = () => downloadText(ta.value, `part${i+1}.txt`); seg.appendChild(saveBtn);
+        const saveBtn = document.createElement('button'); saveBtn.textContent = '保存'; saveBtn.onclick = () => downloadText(ta.value, `part${totalIdx+1}.txt`); seg.appendChild(saveBtn);
         const shareBtn = document.createElement('button'); shareBtn.textContent = '共有'; shareBtn.onclick = () => {
           let t = ta.value;
           if (confirm('コードブロック付きで共有しますか？')) t = '```\n' + t + '\n```';
@@ -157,11 +236,16 @@
         });
         segmentsDiv.appendChild(seg);
       });
-      if (parts.length) document.getElementById('combineActions').style.display = 'block';
+      
+      if (segmentsDiv.querySelectorAll('.segment').length) {
+        document.getElementById('combineActions').style.display = 'block';
+      }
+      renumberSegments();
     }
     function combineSelected() {
       let combined = '';
-      document.querySelectorAll('.segment').forEach((seg, idx) => {
+      // 変更：現在の画面上のDOMの並び順（QuerySelectAll）の通りに結合されるよう担保
+      document.querySelectorAll('.segments-container, .segment').forEach((seg) => {
         const cb = seg.querySelector('input[type="checkbox"]');
         if (cb && cb.checked) combined += seg.querySelector('textarea').value + '\n';
       });
@@ -186,7 +270,6 @@ function splitMarkdownByNode(markdown, maxChars) {
   if (current.trim()) chunks.push(current.trimEnd());
   return chunks;
 }
-
   </script>
 </body>
 </html>
